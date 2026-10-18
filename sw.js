@@ -1,6 +1,6 @@
 /* Catechism in a Year – service worker.
    Bump VERSION whenever any file changes so installed copies update. */
-const VERSION = "ccc-year-v3.2";
+const VERSION = "ccc-year-v3.3";
 const ASSETS = [
   "./",
   "index.html",
@@ -40,15 +40,21 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
 
-  // Pages: try the network first so updates appear, fall back to the cached app offline.
+  // Pages: open instantly from the saved copy, and fetch a fresh copy in the
+  // background for next time. On a slow or absent connection the app never
+  // waits for the network. Updates appear the next time the app is opened.
   if (req.mode === "navigate") {
+    const fresh = fetch(req)
+      .then(res => {
+        if (res.ok) { const copy = res.clone(); return caches.open(VERSION).then(c => c.put("index.html", copy)).then(() => res); }
+        return res;
+      })
+      .catch(() => null);
+    e.waitUntil(fresh);
     e.respondWith(
-      fetch(req)
-        .then(res => {
-          if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put("index.html", copy)); }
-          return res;
-        })
-        .catch(() => caches.match("index.html"))
+      caches.match("index.html")
+        .then(hit => hit || fresh.then(res => res || caches.match("./")))
+        .then(res => res || Response.error())
     );
     return;
   }
