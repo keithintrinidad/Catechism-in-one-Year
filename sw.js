@@ -1,6 +1,9 @@
 /* Catechism in a Year – service worker.
    Bump VERSION whenever any file changes so installed copies update. */
-const VERSION = "ccc-year-v3.3";
+const VERSION = "ccc-year-v3.4";
+// All the apps share one origin (keithintrinidad.github.io) and so one pool of caches:
+// only ever remove this app's own old caches, never another app's.
+const CACHE_PREFIX = "ccc-year-";
 const ASSETS = [
   "./",
   "index.html",
@@ -31,7 +34,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
